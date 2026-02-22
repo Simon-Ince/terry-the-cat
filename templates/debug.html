@@ -32,12 +32,11 @@
         <p>Your app is running on Railway but <strong>DATABASE_URL points to localhost</strong>. On the server there is no Postgres on localhost, so the connection fails.</p>
         <p><strong>Do this:</strong></p>
         <ol>
-          <li>In the Railway dashboard, open your <strong>project</strong>.</li>
-          <li>Add a <strong>PostgreSQL</strong> plugin if you don’t have one (New → Database → PostgreSQL).</li>
-          <li>Open your <strong>app service</strong> (the one that runs this code). Go to <strong>Variables</strong>.</li>
-          <li><strong>Remove</strong> any manual <code>DATABASE_URL</code> or <code>POSTGRES_*</code> variables you added. Railway will inject the correct <code>DATABASE_URL</code> when the database is linked.</li>
-          <li>In your app service, go to <strong>Settings</strong> → <strong>Connect</strong> (or the “Variables” tab and use “Add a reference”) and <strong>link the PostgreSQL service</strong> so that <code>DATABASE_URL</code> is provided automatically.</li>
-          <li>Redeploy the app. The debug page should then show a non-localhost URL and a successful connection.</li>
+          <li>Open the <strong>PostgreSQL</strong> service in your project → <strong>Connect</strong> tab.</li>
+          <li>Copy the <strong>“Postgres Connection URL”</strong> (the full connection string).</li>
+          <li>Open your <strong>app service</strong> → <strong>Variables</strong>. Remove any existing <code>DATABASE_URL</code> that uses localhost.</li>
+          <li>Add <code>DATABASE_URL</code> and paste the URL you copied (it should look like <code>postgresql://...@...railway.app:PORT/railway</code> or use <code>postgres.railway.internal</code>).</li>
+          <li>Redeploy. The app also checks <code>DATABASE_PRIVATE_URL</code> and <code>DATABASE_PUBLIC_URL</code> if those are set by linking.</li>
         </ol>
       </div>
     {% endif %}

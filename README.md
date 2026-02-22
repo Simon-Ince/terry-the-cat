@@ -24,8 +24,8 @@ Local Postgres: user `postgres`, password `postgres`, database `terry`, port `54
 
 ## Railway
 
-1. Add a **PostgreSQL** plugin to your project (New → Database → PostgreSQL).
-2. In your **app service** (the one that runs this repo), link the PostgreSQL service so Railway injects `DATABASE_URL` (e.g. Settings → Connect, or add a variable reference to the database).
-3. Use the connection URL Railway provides. It may use the host **`postgres.railway.internal`** (Railway’s private network) – that’s correct. Your app reads `DATABASE_URL`; no code changes needed. **Do not** overwrite it with a localhost URL.
-4. If Railway exposes both a public URL and a private one (e.g. `DATABASE_PUBLIC_URL` vs `DATABASE_PRIVATE_URL`), reference the **private** variable as `DATABASE_URL` so the app uses `postgres.railway.internal` and stays on the internal network.
+1. **Add PostgreSQL**: In your project, choose “Provision PostgreSQL” (or New → Database → PostgreSQL) and wait for it to finish.
+2. **Get the connection URL**: Open the **PostgreSQL** service → **Connect** tab. Copy the **“Postgres Connection URL”** (it looks like `postgresql://postgres:...@containers-us-west-XX.railway.app:PORT/railway` or uses `postgres.railway.internal`). See [Connect a Railway database (PostgreSQL) with Express](https://dev.to/ngoakor12/connect-a-railway-databasepostgresql-with-node-postgres-in-express-15lf) for the same flow.
+3. **Set it in your app**: In your **app service** (the one that runs this repo) → **Variables**, add **`DATABASE_URL`** and paste that URL. (If you link the database instead, Railway may inject `DATABASE_URL`, `DATABASE_PRIVATE_URL`, or `DATABASE_PUBLIC_URL`; the app uses whichever is set.)
+4. **Do not** set `DATABASE_URL` to a localhost URL; that will fail on Railway.
 5. Deploy. If something goes wrong, open **/debug** on the deployed app for connection status and hints.
