@@ -74,6 +74,11 @@
     </div>
 
     <div class="card">
+      <h2>Stats</h2>
+      <p><strong>Fed this week:</strong> {{ feed_count_week if feed_count_week is not none else "—" }}</p>
+    </div>
+
+    <div class="card">
       <h2>Environment</h2>
       <p><strong>Railway:</strong> {{ "Yes" if has_railway else "No" }}</p>
       <p><strong>PORT:</strong> {{ port }}</p>

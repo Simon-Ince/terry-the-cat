@@ -1,7 +1,10 @@
-from flask import Flask, jsonify, request, redirect, render_template
+from flask import Flask, jsonify, request, redirect, render_template, send_from_directory
 import os
 import sys
 import logging
+import time as time_module
+from datetime import datetime, timezone
+
 import psycopg2
 from psycopg2 import OperationalError
 from psycopg2.extras import RealDictCursor
@@ -18,6 +21,21 @@ logger = logging.getLogger(__name__)
 _last_db_error = None
 _last_db_error_at = None
 
+# Rate limit: 10 POSTs per minute per IP (in-memory)
+_rate_limit_store = {}  # ip -> [timestamp, ...]
+RATE_LIMIT_MAX = 10
+RATE_LIMIT_WINDOW_SEC = 60
+
+# Duplicate guard: same "what" within this many seconds = duplicate
+DUPLICATE_WINDOW_SEC = 300  # 5 minutes
+
+# Input limit for "what"
+WHAT_MAX_LENGTH = 200
+
+# DB retries
+DB_RETRIES = 3
+DB_RETRY_DELAY_SEC = 0.5
+
 INIT_SQL = """
 CREATE TABLE IF NOT EXISTS feedings (
     id SERIAL PRIMARY KEY,
@@ -25,6 +43,27 @@ CREATE TABLE IF NOT EXISTS feedings (
     what TEXT NOT NULL
 );
 """
+# Add fed_by if missing (migration)
+ALTER_FED_BY_SQL = "ALTER TABLE feedings ADD COLUMN fed_by TEXT;"
+
+
+def _set_last_error(e):
+    global _last_db_error, _last_db_error_at
+    _last_db_error = str(e)
+    _last_db_error_at = time_module.time()
+
+
+def _retry_db(fn, *args, **kwargs):
+    """Run a DB call with up to DB_RETRIES attempts on OperationalError."""
+    last_err = None
+    for attempt in range(DB_RETRIES):
+        try:
+            return fn(*args, **kwargs)
+        except OperationalError as e:
+            last_err = e
+            if attempt < DB_RETRIES - 1:
+                time_module.sleep(DB_RETRY_DELAY_SEC)
+    raise last_err
 
 
 def get_db_connection():
@@ -32,22 +71,50 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
-def _set_last_error(e):
-    global _last_db_error, _last_db_error_at
-    import time
-    _last_db_error = str(e)
-    _last_db_error_at = time.time()
+def _relative_time(dt):
+    """Return human-readable relative time, e.g. '2 hours ago', 'just now'."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    delta_sec = (now - dt).total_seconds()
+    if delta_sec < 0:
+        return "just now"
+    if delta_sec < 60:
+        return "just now"
+    if delta_sec < 3600:
+        m = int(delta_sec / 60)
+        return f"{m} min ago" if m == 1 else f"{m} min ago"
+    if delta_sec < 86400:
+        h = int(delta_sec / 3600)
+        return "1 hour ago" if h == 1 else f"{h} hours ago"
+    if delta_sec < 604800:
+        d = int(delta_sec / 86400)
+        return "1 day ago" if d == 1 else f"{d} days ago"
+    if delta_sec < 2592000:
+        w = int(delta_sec / 604800)
+        return "1 week ago" if w == 1 else f"{w} weeks ago"
+    return dt.strftime("%d %b")
 
 
 def init_db():
-    """Create feedings table if it doesn't exist."""
-    try:
+    """Create feedings table and run migrations if needed."""
+    def _init():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(INIT_SQL)
         conn.commit()
+        try:
+            cur.execute(ALTER_FED_BY_SQL)
+            conn.commit()
+        except Exception as e:
+            if "already exists" not in str(e).lower() and "duplicate_column" not in str(e).lower():
+                raise
+            conn.rollback()
         cur.close()
         conn.close()
+
+    try:
+        _retry_db(_init)
     except OperationalError as e:
         _set_last_error(e)
         logger.exception("init_db failed")
@@ -55,17 +122,20 @@ def init_db():
 
 def get_recent_feedings(limit=20):
     """Return the most recent feedings, or empty list if DB unavailable."""
-    try:
+    def _query():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(
-            "SELECT id, fed_at, what FROM feedings ORDER BY fed_at DESC LIMIT %s",
+            "SELECT id, fed_at, what, fed_by FROM feedings ORDER BY fed_at DESC LIMIT %s",
             (limit,),
         )
         rows = cur.fetchall()
         cur.close()
         conn.close()
         return [dict(r) for r in rows]
+
+    try:
+        return _retry_db(_query)
     except OperationalError as e:
         _set_last_error(e)
         logger.exception("get_recent_feedings failed")
@@ -78,33 +148,136 @@ def get_last_fed():
     return feedings[0] if feedings else None
 
 
+def get_feed_count_this_week():
+    """Return number of feedings in the last 7 days."""
+    def _query():
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM feedings WHERE fed_at > NOW() - INTERVAL '7 days'"
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row[0] if row else 0
+
+    try:
+        return _retry_db(_query)
+    except OperationalError as e:
+        _set_last_error(e)
+        logger.exception("get_feed_count_this_week failed")
+        return None
+
+
+def has_duplicate_recent(what_normalized):
+    """True if the same 'what' was logged in the last DUPLICATE_WINDOW_SEC."""
+    def _query():
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT 1 FROM feedings
+            WHERE LOWER(TRIM(what)) = LOWER(%s)
+              AND fed_at > NOW() - INTERVAL '1 second' * %s
+            LIMIT 1
+            """,
+            (what_normalized, DUPLICATE_WINDOW_SEC),
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row is not None
+
+    try:
+        return _retry_db(_query)
+    except OperationalError:
+        return False
+
+
+def _rate_limit_check(ip):
+    """Return True if this IP is over the rate limit."""
+    now = time_module.time()
+    if ip not in _rate_limit_store:
+        _rate_limit_store[ip] = []
+    times = _rate_limit_store[ip]
+    # Prune old
+    times[:] = [t for t in times if now - t < RATE_LIMIT_WINDOW_SEC]
+    if len(times) >= RATE_LIMIT_MAX:
+        return True
+    times.append(now)
+    return False
+
+
+def _sanitize_what(s):
+    """Trim and cap length; return None if empty."""
+    if s is None:
+        return None
+    s = " ".join(s.strip().split())  # trim and collapse internal whitespace
+    if not s:
+        return None
+    return s[:WHAT_MAX_LENGTH] if len(s) > WHAT_MAX_LENGTH else s
+
+
 @app.route("/")
 def index():
     init_db()
     last = get_last_fed()
     recent = get_recent_feedings()
+    feed_count_week = get_feed_count_this_week()
     show_db_error = request.args.get("db_error") == "1"
+    show_duplicate = request.args.get("duplicate") == "1"
+    show_rate_limit = request.args.get("rate_limit") == "1"
+    # Add relative time and exact time for template
+    if last:
+        last["relative_time"] = _relative_time(last["fed_at"])
+        last["fed_by_display"] = (last.get("fed_by") or "").strip() or "Anonymous"
+    for f in recent:
+        f["relative_time"] = _relative_time(f["fed_at"])
+        f["fed_by_display"] = (f.get("fed_by") or "").strip() or "Anonymous"
     return render_template(
         "index.html",
         last_fed=last,
         feedings=recent,
+        feed_count_week=feed_count_week,
         show_db_error=show_db_error,
+        show_duplicate=show_duplicate,
+        show_rate_limit=show_rate_limit,
     )
 
 
 @app.route("/feed", methods=["POST"])
 def feed():
     init_db()
-    what = (request.form.get("what") or "").strip()
+    # Rate limit
+    ip = request.remote_addr or "unknown"
+    if _rate_limit_check(ip):
+        return redirect("/?rate_limit=1")
+
+    what = _sanitize_what(request.form.get("what"))
+    fed_by = (request.form.get("fed_by") or "").strip() or None
+    if fed_by:
+        fed_by = fed_by[:100]  # cap optional name
+
     if not what:
         return redirect("/")
-    try:
+
+    # Duplicate guard
+    if has_duplicate_recent(what):
+        return redirect("/?duplicate=1")
+
+    def _insert():
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("INSERT INTO feedings (what) VALUES (%s)", (what,))
+        cur.execute(
+            "INSERT INTO feedings (what, fed_by) VALUES (%s, %s)",
+            (what, fed_by),
+        )
         conn.commit()
         cur.close()
         conn.close()
+
+    try:
+        _retry_db(_insert)
         global _last_db_error, _last_db_error_at
         _last_db_error = None
         _last_db_error_at = None
@@ -123,6 +296,7 @@ def api_feedings():
     feedings = get_recent_feedings(limit=limit)
     for f in feedings:
         f["fed_at"] = f["fed_at"].isoformat()
+        f["fed_by"] = f.get("fed_by")
     return jsonify({"feedings": feedings})
 
 
@@ -134,7 +308,14 @@ def api_last():
     if not last:
         return jsonify({"last_fed": None})
     last["fed_at"] = last["fed_at"].isoformat()
+    last["fed_by"] = last.get("fed_by")
     return jsonify({"last_fed": last})
+
+
+@app.route("/sw.js")
+def service_worker():
+    """Serve service worker at root so scope can be / for PWA."""
+    return send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
 
 
 @app.route("/health")
@@ -155,7 +336,6 @@ def _redact_url(url):
     if not url:
         return None
     import re
-    # Replace password in postgresql://user:password@host:port/db
     m = re.match(r"(postgresql://[^:]+:)([^@]+)(@.+)", url)
     if m:
         return m.group(1) + "****" + m.group(3)
@@ -165,6 +345,7 @@ def _redact_url(url):
 @app.route("/debug")
 def debug():
     """Debug page: DB status, last error, env hints."""
+    init_db()
     db_configured = bool(DATABASE_URL)
     db_connected = False
     db_error = None
@@ -180,6 +361,8 @@ def debug():
     except OperationalError as e:
         db_error = str(e)
         _set_last_error(e)
+
+    feed_count_week = get_feed_count_this_week()
 
     import time as _time
     global _last_db_error, _last_db_error_at
@@ -205,6 +388,7 @@ def debug():
         has_railway=has_railway,
         database_points_to_localhost=database_points_to_localhost,
         port=os.getenv("PORT", "not set"),
+        feed_count_week=feed_count_week,
     )
 
 

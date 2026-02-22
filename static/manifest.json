@@ -1,0 +1,17 @@
+{
+  "name": "Terry the Cat",
+  "short_name": "Terry",
+  "description": "Neighbourhood feeding tracker for Terry the cat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#8fb4a8",
+  "theme_color": "#8fb4a8",
+  "icons": [
+    {
+      "src": "/static/terry.png",
+      "sizes": "280x210",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
