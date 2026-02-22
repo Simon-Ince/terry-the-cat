@@ -1,13 +1,22 @@
 # Terry the Cat
 
-Flask app.
+Flask app with PostgreSQL.
 
 ## Run locally with Docker Compose
+
+Starts the app and a local PostgreSQL database:
 
 ```bash
 docker compose up --build
 ```
 
-Then open http://localhost:8000
+- App: http://localhost:8000  
+- Health (DB status): http://localhost:8000/health  
 
 To run in the background: `docker compose up -d --build`
+
+Local Postgres: user `postgres`, password `postgres`, database `terry`, port `5432` (only from the app container; not exposed to the host by default).
+
+## Railway
+
+On Railway, add the PostgreSQL plugin and link it to your service. Railway sets `DATABASE_URL` automatically; no extra config needed.

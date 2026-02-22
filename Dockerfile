@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
-COPY main.py .
+COPY main.py config.py .
 
 # Default port (overridable via PORT env)
 ENV PORT=8000
