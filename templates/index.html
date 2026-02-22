@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terry the Cat – Feeding tracker</title>
+  <style>
+    :root {
+      --wall: #8fb4a8;
+      --bg: #e8f0ee;
+      --card: #fff;
+      --text: #2d2a26;
+      --muted: #5a6562;
+      --accent: #c45c3e;
+      --accent-soft: #f5e8e5;
+      --blanket: #b8d4e6;
+      --border: #d4e2df;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+      --touch: 48px;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: var(--font);
+      background: var(--wall);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 2rem;
+      min-height: 100vh;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .hero-photo {
+      width: 100%;
+      max-width: 280px;
+      height: auto;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: block;
+      margin: 0 auto 0.75rem;
+      background: var(--card);
+    }
+    .hero h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0 0 0.2rem;
+      color: var(--text);
+    }
+    .hero .tagline {
+      color: var(--muted);
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .card h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.6rem;
+      font-weight: 600;
+    }
+
+    .action-card {
+      background: linear-gradient(135deg, var(--accent-soft) 0%, #fff 100%);
+      border-color: #e8d5d1;
+    }
+    .action-card .prompt {
+      font-size: 1.05rem;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+    }
+    .feed-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .feed-form input[type="text"] {
+      width: 100%;
+      min-height: var(--touch);
+      padding: 0 1rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      font: inherit;
+      font-size: 1.05rem;
+    }
+    .feed-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .feed-form input[type="text"]::placeholder {
+      color: var(--muted);
+    }
+    .feed-form button {
+      min-height: var(--touch);
+      padding: 0 1.25rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font: inherit;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.15s;
+    }
+    .feed-form button:hover {
+      filter: brightness(1.08);
+    }
+    .feed-form button:active {
+      filter: brightness(0.95);
+    }
+
+    .last-fed-card {
+      background: var(--card);
+    }
+    .last-fed-card .value {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .last-fed-card .value.none {
+      color: var(--muted);
+      font-weight: 500;
+      font-style: italic;
+    }
+    .last-fed-card .time {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    .feedings-card .section-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.6rem;
+      font-weight: 600;
+    }
+    .feedings-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .feedings-list li {
+      min-height: var(--touch);
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    .feedings-list li:last-child {
+      border-bottom: none;
+    }
+    .feedings-list .what {
+      font-weight: 500;
+      font-size: 1rem;
+    }
+    .feedings-list .when {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .empty-state {
+      color: var(--muted);
+      font-style: italic;
+      padding: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <img src="{{ url_for('static', filename='terry.png') }}" alt="Terry the cat" class="hero-photo" width="280" height="210">
+      <h1>Terry the Cat</h1>
+      <p class="tagline">Feed Tracker</p>
+    </header>
+
+    <section class="card action-card">
+      <h2>Log a feeding</h2>
+      <p class="prompt">What did you feed Terry?</p>
+      <form action="/feed" method="post" class="feed-form">
+        <input type="text" name="what" placeholder="e.g. Whiskas, chicken, treats" required autofocus aria-label="What you fed Terry">
+        <button type="submit">I fed Terry</button>
+      </form>
+    </section>
+
+    <section class="card last-fed-card">
+      <h2>Last fed</h2>
+      {% if last_fed %}
+        <p class="value">{{ last_fed.what }}</p>
+        <p class="time">{{ last_fed.fed_at.strftime('%A %d %B at %H:%M') }}</p>
+      {% else %}
+        <p class="value none">No feedings logged yet.</p>
+        <p class="time">Be the first to log one!</p>
+      {% endif %}
+    </section>
+
+    <section class="card feedings-card">
+      <h2 class="section-label">Recent feedings</h2>
+      {% if feedings %}
+        <ul class="feedings-list">
+          {% for f in feedings %}
+            <li>
+              <span class="what">{{ f.what }}</span>
+              <span class="when">{{ f.fed_at.strftime('%d %b %H:%M') }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">No feedings yet.</p>
+      {% endif %}
+    </section>
+  </div>
+</body>
+</html>

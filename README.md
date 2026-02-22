@@ -1,6 +1,11 @@
 # Terry the Cat
 
-Flask app with PostgreSQL.
+A simple app for the neighbourhood to track when Terry the cat was last fed and what he was fed.
+
+- **Home page** – See last feeding, log a new one, and view recent feedings.
+- **API** – `GET /api/feedings` (recent feedings), `GET /api/last` (most recent).
+
+Flask + PostgreSQL. Runs on Railway or locally with Docker Compose.
 
 ## Run locally with Docker Compose
 
