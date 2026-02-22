@@ -435,19 +435,19 @@ def api_last():
 
 @app.route("/qr")
 def qr():
-    """Serve a QR code image pointing at this app's URL."""
-    import qrcode
-    url = request.url_root.rstrip("/") or request.host_url.rstrip("/")
-    img = qrcode.make(url)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
-    return send_file(buf, mimetype="image/png", download_name="terry-qr.png")
+    """Serve the static QR code image (for download)."""
+    return send_from_directory(
+        app.static_folder,
+        "qr-code.png",
+        mimetype="image/png",
+        as_attachment=True,
+        attachment_filename="terry-tracker-qr.png",
+    )
 
 
 @app.route("/share")
 def share():
-    """Page with QR code and link for posters/flyers."""
+    """Share page: copy link and QR code for the feeding tracker."""
     app_url = request.url_root.rstrip("/") or request.host_url.rstrip("/")
     return render_template("share.html", app_url=app_url)
 

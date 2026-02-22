@@ -10,30 +10,84 @@
       --card: #fff;
       --text: #2d2a26;
       --muted: #5a6562;
+      --accent: #c45c3e;
+      --border: #d4e2df;
       --font: system-ui, -apple-system, sans-serif;
+      --radius: 16px;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --wall: #2d4a42; --card: #243b36; --text: #e8f0ee; --muted: #9ab5ae; }
+      :root { --wall: #2d4a42; --card: #243b36; --text: #e8f0ee; --muted: #9ab5ae; --border: #3a524b; }
     }
     body { font-family: var(--font); background: var(--wall); color: var(--text); margin: 0; padding: 1.5rem; min-height: 100vh; }
-    .page { max-width: 360px; margin: 0 auto; text-align: center; }
-    h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
-    .card { background: var(--card); border-radius: 16px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-    .qr { max-width: 220px; height: auto; margin: 0 auto 1rem; display: block; }
-    .url { font-size: 0.95rem; color: var(--muted); word-break: break-all; }
+    .page { max-width: 400px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+    .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.25rem; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+    .card h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 0.75rem; }
+    .link-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .link-row input { flex: 1; min-width: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: 0.9rem; background: var(--card); color: var(--text); }
+    .btn { padding: 0.5rem 1rem; border-radius: 8px; font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-ghost { background: transparent; color: var(--muted); }
+    .btn-ghost:hover { color: var(--text); }
+    .qr-wrap { text-align: center; padding: 0.5rem 0; }
+    .qr-wrap img { max-width: 200px; height: auto; display: block; margin: 0 auto 0.75rem; border-radius: 8px; }
+    .qr-wrap .download { font-size: 0.9rem; }
     a { color: #0d6efd; }
+    .back { margin-top: 1rem; font-size: 0.9rem; }
+    .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); padding: 0.5rem 1rem; background: var(--text); color: var(--card); border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
   <div class="page">
-    <h1>Terry the Cat</h1>
-    <p style="color: var(--muted); margin-bottom: 1rem;">Scan to open the feeding tracker</p>
+    <h1>Share</h1>
+    <p class="sub">Let others open the Terry feeding tracker</p>
+
     <div class="card">
-      <img src="/qr" alt="QR code" class="qr" width="220" height="220">
-      <p class="url">{{ app_url }}</p>
-      <p style="margin-top: 1rem;"><a href="/">Open app</a></p>
+      <h2>Link</h2>
+      <div class="link-row">
+        <input type="text" id="app-url" value="{{ app_url }}" readonly aria-label="App URL">
+        <button type="button" class="btn btn-primary" id="copy-btn">Copy link</button>
+      </div>
     </div>
-    <p><a href="/">← Back to tracker</a></p>
+
+    <div class="card">
+      <h2>QR code</h2>
+      <div class="qr-wrap">
+        <img src="{{ url_for('static', filename='qr-code.png') }}" alt="QR code for {{ app_url }}" width="200" height="200">
+        <a href="/qr" download="terry-tracker-qr.png" class="download">Download QR image</a>
+      </div>
+    </div>
+
+    <p class="back"><a href="/">← Back to tracker</a></p>
   </div>
+
+  <div class="toast" id="toast" aria-live="polite">Link copied</div>
+
+  <script>
+    (function () {
+      var input = document.getElementById('app-url');
+      var copyBtn = document.getElementById('copy-btn');
+      var toast = document.getElementById('toast');
+      if (input && copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          input.select();
+          input.setSelectionRange(0, 99999);
+          try {
+            navigator.clipboard.writeText(input.value);
+            toast.textContent = 'Link copied';
+            toast.classList.add('show');
+            setTimeout(function () { toast.classList.remove('show'); }, 2000);
+          } catch (e) {
+            toast.textContent = 'Select and copy the link';
+            toast.classList.add('show');
+            setTimeout(function () { toast.classList.remove('show'); }, 2000);
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
