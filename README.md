@@ -24,4 +24,8 @@ Local Postgres: user `postgres`, password `postgres`, database `terry`, port `54
 
 ## Railway
 
-On Railway, add the PostgreSQL plugin and link it to your service. Railway sets `DATABASE_URL` automatically; no extra config needed.
+1. Add a **PostgreSQL** plugin to your project (New → Database → PostgreSQL).
+2. In your **app service** (the one that runs this repo), link the PostgreSQL service so Railway injects `DATABASE_URL` (e.g. Settings → Connect, or add a variable reference to the database).
+3. Use the connection URL Railway provides. It may use the host **`postgres.railway.internal`** (Railway’s private network) – that’s correct. Your app reads `DATABASE_URL`; no code changes needed. **Do not** overwrite it with a localhost URL.
+4. If Railway exposes both a public URL and a private one (e.g. `DATABASE_PUBLIC_URL` vs `DATABASE_PRIVATE_URL`), reference the **private** variable as `DATABASE_URL` so the app uses `postgres.railway.internal` and stays on the internal network.
+5. Deploy. If something goes wrong, open **/debug** on the deployed app for connection status and hints.

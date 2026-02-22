@@ -189,6 +189,11 @@ def debug():
             "%Y-%m-%d %H:%M:%S UTC",
             _time.gmtime(_last_db_error_at),
         )
+    has_railway = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"))
+    database_points_to_localhost = (
+        DATABASE_URL is not None
+        and ("localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL)
+    )
     return render_template(
         "debug.html",
         db_configured=db_configured,
@@ -197,7 +202,8 @@ def debug():
         last_db_error=_last_db_error,
         last_db_error_at=last_error_at_str,
         database_url_redacted=_redact_url(DATABASE_URL),
-        has_railway=bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID")),
+        has_railway=has_railway,
+        database_points_to_localhost=database_points_to_localhost,
         port=os.getenv("PORT", "not set"),
     )
 

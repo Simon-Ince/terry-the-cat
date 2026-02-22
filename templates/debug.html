@@ -15,12 +15,32 @@
     .err { color: #c00; }
     pre, .mono { font-family: ui-monospace, monospace; font-size: 0.85rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
     .mb0 { margin-bottom: 0; }
+    .fix-card { background: #fff3cd; border: 1px solid #ffc107; }
+    .fix-card h2 { color: #856404; }
+    .fix-card ol { margin: 0.5rem 0 0 1.2rem; padding: 0; }
+    .fix-card li { margin-bottom: 0.35rem; }
   </style>
 </head>
 <body>
   <div class="page">
     <h1>Debug</h1>
     <p class="mb0"><a href="/">← Back to Terry</a></p>
+
+    {% if has_railway and database_points_to_localhost %}
+      <div class="card fix-card">
+        <h2>Fix: Use Railway’s database, not localhost</h2>
+        <p>Your app is running on Railway but <strong>DATABASE_URL points to localhost</strong>. On the server there is no Postgres on localhost, so the connection fails.</p>
+        <p><strong>Do this:</strong></p>
+        <ol>
+          <li>In the Railway dashboard, open your <strong>project</strong>.</li>
+          <li>Add a <strong>PostgreSQL</strong> plugin if you don’t have one (New → Database → PostgreSQL).</li>
+          <li>Open your <strong>app service</strong> (the one that runs this code). Go to <strong>Variables</strong>.</li>
+          <li><strong>Remove</strong> any manual <code>DATABASE_URL</code> or <code>POSTGRES_*</code> variables you added. Railway will inject the correct <code>DATABASE_URL</code> when the database is linked.</li>
+          <li>In your app service, go to <strong>Settings</strong> → <strong>Connect</strong> (or the “Variables” tab and use “Add a reference”) and <strong>link the PostgreSQL service</strong> so that <code>DATABASE_URL</code> is provided automatically.</li>
+          <li>Redeploy the app. The debug page should then show a non-localhost URL and a successful connection.</li>
+        </ol>
+      </div>
+    {% endif %}
 
     <div class="card">
       <h2>Database</h2>
