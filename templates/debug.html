@@ -75,6 +75,7 @@
 
     <div class="card">
       <h2>Stats</h2>
+      <p><strong>Fed today (24h):</strong> {{ feed_count_today if feed_count_today is not none else "—" }}</p>
       <p><strong>Fed this week:</strong> {{ feed_count_week if feed_count_week is not none else "—" }}</p>
     </div>
 

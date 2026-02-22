@@ -163,6 +163,29 @@
     .banner-error { background: #f8d7da; color: #721c24; }
     .banner-error a { color: #491217; font-weight: 600; }
     .banner-warn { background: #fff3cd; color: #856404; }
+    .banner-undo {
+      background: #d4edda;
+      color: #155724;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+    .banner-undo .undo-btn {
+      margin-left: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font: inherit;
+      font-size: 0.9rem;
+      background: #155724;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    @media (prefers-color-scheme: dark) {
+      .banner-undo { background: #1e3a24; color: #b8ddc4; }
+      .banner-undo .undo-btn { background: #2d5a36; }
+    }
 
     .banner-offline {
       position: fixed;
@@ -202,6 +225,16 @@
         Too many submissions. Please wait a minute before logging another feeding.
       </div>
     {% endif %}
+    {% if undo_feed_id %}
+      <div class="banner-undo" id="undo-banner" role="status">
+        Feeding logged.
+        <form action="/undo" method="post" style="display:inline;" id="undo-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="undo_id" value="{{ undo_feed_id }}">
+          <button type="submit" class="undo-btn">Undo</button>
+        </form>
+      </div>
+    {% endif %}
 
     <header class="hero">
       <img src="{{ url_for('static', filename='terry.png') }}" alt="Terry the cat" class="hero-photo" width="280" height="210">
@@ -214,8 +247,16 @@
           No feedings yet.
         {% endif %}
       </p>
-      {% if feed_count_week is not none and feed_count_week > 0 %}
-        <p class="stats">Fed {{ feed_count_week }} time{{ 's' if feed_count_week != 1 else '' }} this week</p>
+      {% if (feed_count_today is not none or feed_count_week is not none) and (feed_count_today or feed_count_week) %}
+        <p class="stats">
+          {% if feed_count_today is not none and feed_count_today > 0 %}
+            Fed {{ feed_count_today }} time{{ 's' if feed_count_today != 1 else '' }} today
+            {% if feed_count_week is not none and feed_count_week > 0 %} · {% endif %}
+          {% endif %}
+          {% if feed_count_week is not none and feed_count_week > 0 %}
+            {% if feed_count_today is none or feed_count_today == 0 %}Fed {% endif %}{{ feed_count_week }} time{{ 's' if feed_count_week != 1 else '' }} this week
+          {% endif %}
+        </p>
       {% endif %}
     </header>
 
@@ -223,6 +264,7 @@
       <h2>Log a feeding</h2>
       <p class="prompt">What did you feed Terry?</p>
       <form action="/feed" method="post" class="feed-form" id="feed-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" name="what" placeholder="e.g. Whiskas, chicken, treats" required autofocus maxlength="200" aria-label="What you fed Terry">
         <input type="text" name="fed_by" placeholder="Your name (optional)" maxlength="100" aria-label="Your name (optional)">
         <button type="submit" id="submit-btn">I fed Terry</button>
@@ -260,7 +302,7 @@
       {% endif %}
     </section>
 
-    <p class="footer-links"><a href="/debug">Debug</a></p>
+    <p class="footer-links"><a href="/stats">Stats</a> · <a href="/share">QR code</a> · <a href="/debug">Debug</a></p>
   </div>
 
   <div class="banner-offline" id="offline-banner" aria-live="polite">Can’t reach the server – check your connection.</div>
@@ -279,6 +321,7 @@
       }
 
       if (form) {
+        var defaultBtnText = submitBtn.textContent;
         form.addEventListener('submit', function (e) {
           var formData = new FormData(form);
           var url = form.getAttribute('action') || '/feed';
@@ -290,6 +333,7 @@
           }
           e.preventDefault();
           submitBtn.disabled = true;
+          submitBtn.textContent = 'Saving…';
           fetch(url, fetchOpts)
             .then(function (res) {
               if (res.type === 'opaqueredirect' || res.redirected) {
@@ -305,8 +349,16 @@
             .catch(function () {
               showOffline();
               submitBtn.disabled = false;
+              submitBtn.textContent = defaultBtnText;
             });
         });
+      }
+
+      var undoBanner = document.getElementById('undo-banner');
+      if (undoBanner) {
+        setTimeout(function () {
+          undoBanner.style.display = 'none';
+        }, 6000);
       }
 
       window.addEventListener('online', hideOffline);

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stats – Terry the Cat</title>
+  <style>
+    :root {
+      --wall: #8fb4a8;
+      --card: #fff;
+      --text: #2d2a26;
+      --muted: #5a6562;
+      --accent: #c45c3e;
+      --border: #d4e2df;
+      --font: system-ui, -apple-system, sans-serif;
+      --radius: 16px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --wall: #2d4a42; --card: #243b36; --text: #e8f0ee; --muted: #9ab5ae; --border: #3a524b; }
+    }
+    body { font-family: var(--font); background: var(--wall); color: var(--text); margin: 0; padding: 1.5rem; line-height: 1.5; }
+    .page { max-width: 440px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+    .card h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 1rem; }
+    a { color: #0d6efd; }
+    .bar-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .bar-label { flex: 0 0 80px; font-size: 0.9rem; }
+    .bar-wrap { flex: 1; background: var(--border); border-radius: 6px; height: 1.5rem; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); border-radius: 6px; min-width: 2px; transition: width 0.3s; }
+    .bar-n { flex: 0 0 2em; text-align: right; font-size: 0.9rem; color: var(--muted); }
+    .food-list { list-style: none; padding: 0; margin: 0; }
+    .food-list li { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .food-list li:last-child { border-bottom: none; }
+    .empty { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Stats</h1>
+    <p><a href="/">← Back to tracker</a></p>
+
+    <div class="card">
+      <h2>Feedings per day (this week)</h2>
+      {% if per_day %}
+        {% for row in per_day %}
+          <div class="bar-row">
+            <span class="bar-label">{{ row.day_str }}</span>
+            <div class="bar-wrap">
+              <div class="bar-fill" style="width: {{ (row.n / max_per_day * 100) }}%;"></div>
+            </div>
+            <span class="bar-n">{{ row.n }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No feedings in the last 7 days.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Most common foods (this month)</h2>
+      {% if top_foods %}
+        <ul class="food-list">
+          {% for row in top_foods %}
+            <li><span>{{ row.what }}</span> <span style="color: var(--muted);">{{ row.n }}×</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">No feedings in the last 30 days.</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

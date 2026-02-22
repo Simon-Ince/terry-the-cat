@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share – Terry the Cat</title>
+  <style>
+    :root {
+      --wall: #8fb4a8;
+      --card: #fff;
+      --text: #2d2a26;
+      --muted: #5a6562;
+      --font: system-ui, -apple-system, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --wall: #2d4a42; --card: #243b36; --text: #e8f0ee; --muted: #9ab5ae; }
+    }
+    body { font-family: var(--font); background: var(--wall); color: var(--text); margin: 0; padding: 1.5rem; min-height: 100vh; }
+    .page { max-width: 360px; margin: 0 auto; text-align: center; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .card { background: var(--card); border-radius: 16px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .qr { max-width: 220px; height: auto; margin: 0 auto 1rem; display: block; }
+    .url { font-size: 0.95rem; color: var(--muted); word-break: break-all; }
+    a { color: #0d6efd; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Terry the Cat</h1>
+    <p style="color: var(--muted); margin-bottom: 1rem;">Scan to open the feeding tracker</p>
+    <div class="card">
+      <img src="/qr" alt="QR code" class="qr" width="220" height="220">
+      <p class="url">{{ app_url }}</p>
+      <p style="margin-top: 1rem;"><a href="/">Open app</a></p>
+    </div>
+    <p><a href="/">← Back to tracker</a></p>
+  </div>
+</body>
+</html>

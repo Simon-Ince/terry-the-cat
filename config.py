@@ -2,6 +2,9 @@
 import os
 from urllib.parse import quote_plus
 
+# Session and CSRF; set SECRET_KEY in production (e.g. Railway variables)
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
+
 # Railway exposes these when you reference the PostgreSQL service:
 # PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, DATABASE_URL
 # https://docs.railway.com/databases/postgresql
