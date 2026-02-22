@@ -24,8 +24,7 @@ Local Postgres: user `postgres`, password `postgres`, database `terry`, port `54
 
 ## Railway
 
-1. **Add PostgreSQL**: In your project, choose “Provision PostgreSQL” (or New → Database → PostgreSQL) and wait for it to finish.
-2. **Get the connection URL**: Open the **PostgreSQL** service → **Connect** tab. Copy the **“Postgres Connection URL”** (it looks like `postgresql://postgres:...@containers-us-west-XX.railway.app:PORT/railway` or uses `postgres.railway.internal`). See [Connect a Railway database (PostgreSQL) with Express](https://dev.to/ngoakor12/connect-a-railway-databasepostgresql-with-node-postgres-in-express-15lf) for the same flow.
-3. **Set it in your app**: In your **app service** (the one that runs this repo) → **Variables**, add **`DATABASE_URL`** and paste that URL. (If you link the database instead, Railway may inject `DATABASE_URL`, `DATABASE_PRIVATE_URL`, or `DATABASE_PUBLIC_URL`; the app uses whichever is set.)
-4. **Do not** set `DATABASE_URL` to a localhost URL; that will fail on Railway.
-5. Deploy. If something goes wrong, open **/debug** on the deployed app for connection status and hints.
+1. **Add PostgreSQL**: In your project, click **+ New** (or `Ctrl/Cmd + K`) and add **PostgreSQL**, or use the [PostgreSQL template](https://railway.com/template/postgres). Wait for it to deploy.
+2. **Connect from your app**: In your **app service** (the one that runs this repo), [reference the PostgreSQL service’s variables](https://docs.railway.com/variables#referencing-another-services-variable) so the app receives `DATABASE_URL` (and optionally `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`). The app uses `DATABASE_URL` if set, otherwise builds a URL from the `PG*` variables. See [Railway: PostgreSQL](https://docs.railway.com/databases/postgresql).
+3. **Do not** set `DATABASE_URL` to a localhost URL in the app; that will fail. Let the reference inject Railway’s URL.
+4. Deploy. If something goes wrong, open **/debug** on the deployed app for connection status and hints.

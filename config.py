@@ -1,28 +1,27 @@
-"""App configuration. Railway sets DATABASE_URL when PostgreSQL is added."""
+"""App configuration. Railway: connect by referencing the PostgreSQL service variables."""
 import os
+from urllib.parse import quote_plus
 
-# Connection string: check multiple env vars so we use whatever Railway provides.
-# See https://dev.to/ngoakor12/connect-a-railway-databasepostgresql-with-node-postgres-in-express-15lf
-DATABASE_URL = (
-    os.getenv("DATABASE_URL")
-    or os.getenv("DATABASE_PRIVATE_URL")  # Railway internal (postgres.railway.internal)
-    or os.getenv("DATABASE_PUBLIC_URL")   # Railway public (containers-*.railway.app)
-    or os.getenv("POSTGRES_URL")
-    or os.getenv("POSTGRES_CONNECTION_STRING")
-)
+# Railway exposes these when you reference the PostgreSQL service:
+# PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, DATABASE_URL
+# https://docs.railway.com/databases/postgresql
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# If no DATABASE_URL, build from Railway's PG* vars or local fallbacks
+if not DATABASE_URL:
+    host = os.getenv("PGHOST") or os.getenv("POSTGRES_HOST", "localhost")
+    port = os.getenv("PGPORT") or os.getenv("POSTGRES_PORT", "5432")
+    user = os.getenv("PGUSER") or os.getenv("POSTGRES_USER", "postgres")
+    password = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD", "postgres")
+    dbname = os.getenv("PGDATABASE") or os.getenv("POSTGRES_DB", "terry")
+    # Quote password in case it contains special characters
+    password_quoted = quote_plus(password)
+    DATABASE_URL = f"postgresql://{user}:{password_quoted}@{host}:{port}/{dbname}"
+
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Railway (and most hosted Postgres) require SSL. Local Docker doesn't.
+# Railway Postgres is SSL-enabled; local Docker isn't
 if DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
     if "sslmode" not in DATABASE_URL.lower():
         DATABASE_URL += "&sslmode=require" if "?" in DATABASE_URL else "?sslmode=require"
-
-# Optional: build from parts if you prefer (e.g. for local dev without Docker)
-if not DATABASE_URL:
-    db_user = os.getenv("POSTGRES_USER", "postgres")
-    db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
-    db_host = os.getenv("POSTGRES_HOST", "localhost")
-    db_port = os.getenv("POSTGRES_PORT", "5432")
-    db_name = os.getenv("POSTGRES_DB", "terry")
-    DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"

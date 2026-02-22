@@ -29,14 +29,13 @@
     {% if has_railway and database_points_to_localhost %}
       <div class="card fix-card">
         <h2>Fix: Use Railway’s database, not localhost</h2>
-        <p>Your app is running on Railway but <strong>DATABASE_URL points to localhost</strong>. On the server there is no Postgres on localhost, so the connection fails.</p>
+        <p>Your app is on Railway but <strong>DATABASE_URL points to localhost</strong>. Connect by <strong>referencing</strong> the PostgreSQL service’s variables instead.</p>
         <p><strong>Do this:</strong></p>
         <ol>
-          <li>Open the <strong>PostgreSQL</strong> service in your project → <strong>Connect</strong> tab.</li>
-          <li>Copy the <strong>“Postgres Connection URL”</strong> (the full connection string).</li>
-          <li>Open your <strong>app service</strong> → <strong>Variables</strong>. Remove any existing <code>DATABASE_URL</code> that uses localhost.</li>
-          <li>Add <code>DATABASE_URL</code> and paste the URL you copied (it should look like <code>postgresql://...@...railway.app:PORT/railway</code> or use <code>postgres.railway.internal</code>).</li>
-          <li>Redeploy. The app also checks <code>DATABASE_PRIVATE_URL</code> and <code>DATABASE_PUBLIC_URL</code> if those are set by linking.</li>
+          <li>In your <strong>app service</strong>, go to <strong>Variables</strong> and remove any manual <code>DATABASE_URL</code> that uses localhost.</li>
+          <li><strong>Reference</strong> the PostgreSQL service: add a variable (e.g. <code>DATABASE_URL</code>) and set it to a <strong>reference</strong> to the PostgreSQL service’s <code>DATABASE_URL</code>. Railway will inject the real connection URL. See <a href="https://docs.railway.com/databases/postgresql">Railway: PostgreSQL</a> and <a href="https://docs.railway.com/variables#referencing-another-services-variable">referencing variables</a>.</li>
+          <li>Alternatively, reference <code>PGHOST</code>, <code>PGPORT</code>, <code>PGUSER</code>, <code>PGPASSWORD</code>, <code>PGDATABASE</code>; the app builds the connection from those if <code>DATABASE_URL</code> is not set.</li>
+          <li>Redeploy.</li>
         </ol>
       </div>
     {% endif %}
