@@ -191,10 +191,24 @@
       font-style: italic;
       padding: 0.5rem 0;
     }
+    .banner-error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+    .banner-error a { color: #491217; font-weight: 600; }
   </style>
 </head>
 <body>
   <div class="page">
+    {% if show_db_error %}
+      <div class="banner-error">
+        The last feeding couldn’t be saved (database issue). <a href="/debug">Open debug page</a> for details.
+      </div>
+    {% endif %}
     <header class="hero">
       <img src="{{ url_for('static', filename='terry.png') }}" alt="Terry the cat" class="hero-photo" width="280" height="210">
       <h1>Terry the Cat</h1>
@@ -236,6 +250,8 @@
         <p class="empty-state">No feedings yet.</p>
       {% endif %}
     </section>
+
+    <p style="text-align:center; margin-top:1.5rem;"><a href="/debug" style="font-size:0.9rem; color:var(--muted);">Debug</a></p>
   </div>
 </body>
 </html>

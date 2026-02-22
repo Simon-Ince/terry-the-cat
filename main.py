@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request, redirect, render_template
 import os
+import sys
+import logging
 import psycopg2
 from psycopg2 import OperationalError
 from psycopg2.extras import RealDictCursor
@@ -7,6 +9,14 @@ from psycopg2.extras import RealDictCursor
 from config import DATABASE_URL
 
 app = Flask(__name__)
+
+# Ensure errors are visible in Railway logs
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Store last DB error for the debug page (in-memory, per process)
+_last_db_error = None
+_last_db_error_at = None
 
 INIT_SQL = """
 CREATE TABLE IF NOT EXISTS feedings (
@@ -22,6 +32,13 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
 
+def _set_last_error(e):
+    global _last_db_error, _last_db_error_at
+    import time
+    _last_db_error = str(e)
+    _last_db_error_at = time.time()
+
+
 def init_db():
     """Create feedings table if it doesn't exist."""
     try:
@@ -31,8 +48,9 @@ def init_db():
         conn.commit()
         cur.close()
         conn.close()
-    except OperationalError:
-        pass  # No DB in dev or health check will show it
+    except OperationalError as e:
+        _set_last_error(e)
+        logger.exception("init_db failed")
 
 
 def get_recent_feedings(limit=20):
@@ -48,7 +66,9 @@ def get_recent_feedings(limit=20):
         cur.close()
         conn.close()
         return [dict(r) for r in rows]
-    except OperationalError:
+    except OperationalError as e:
+        _set_last_error(e)
+        logger.exception("get_recent_feedings failed")
         return []
 
 
@@ -63,7 +83,13 @@ def index():
     init_db()
     last = get_last_fed()
     recent = get_recent_feedings()
-    return render_template("index.html", last_fed=last, feedings=recent)
+    show_db_error = request.args.get("db_error") == "1"
+    return render_template(
+        "index.html",
+        last_fed=last,
+        feedings=recent,
+        show_db_error=show_db_error,
+    )
 
 
 @app.route("/feed", methods=["POST"])
@@ -79,8 +105,13 @@ def feed():
         conn.commit()
         cur.close()
         conn.close()
-    except OperationalError:
-        pass  # Redirect home anyway; user can retry
+        global _last_db_error, _last_db_error_at
+        _last_db_error = None
+        _last_db_error_at = None
+    except OperationalError as e:
+        _set_last_error(e)
+        logger.exception("feed INSERT failed")
+        return redirect("/?db_error=1")
     return redirect("/")
 
 
@@ -117,6 +148,58 @@ def health():
     except OperationalError:
         return jsonify({"status": "ok", "database": "disconnected"}), 503
     return jsonify({"status": "ok", "database": "not configured"})
+
+
+def _redact_url(url):
+    """Hide password in DATABASE_URL for debug output."""
+    if not url:
+        return None
+    import re
+    # Replace password in postgresql://user:password@host:port/db
+    m = re.match(r"(postgresql://[^:]+:)([^@]+)(@.+)", url)
+    if m:
+        return m.group(1) + "****" + m.group(3)
+    return url
+
+
+@app.route("/debug")
+def debug():
+    """Debug page: DB status, last error, env hints."""
+    db_configured = bool(DATABASE_URL)
+    db_connected = False
+    db_error = None
+    try:
+        if DATABASE_URL:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.fetchone()
+            cur.close()
+            conn.close()
+            db_connected = True
+    except OperationalError as e:
+        db_error = str(e)
+        _set_last_error(e)
+
+    import time as _time
+    global _last_db_error, _last_db_error_at
+    last_error_at_str = None
+    if _last_db_error_at:
+        last_error_at_str = _time.strftime(
+            "%Y-%m-%d %H:%M:%S UTC",
+            _time.gmtime(_last_db_error_at),
+        )
+    return render_template(
+        "debug.html",
+        db_configured=db_configured,
+        db_connected=db_connected,
+        db_error=db_error,
+        last_db_error=_last_db_error,
+        last_db_error_at=last_error_at_str,
+        database_url_redacted=_redact_url(DATABASE_URL),
+        has_railway=bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID")),
+        port=os.getenv("PORT", "not set"),
+    )
 
 
 if __name__ == "__main__":
